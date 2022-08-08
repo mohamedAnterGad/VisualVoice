@@ -6,6 +6,7 @@
 # This source code is licensed under the license found in the
 # LICENSE file in the root directory of this source tree.
 
+import soundfile as sf
 import os
 import argparse
 import librosa
@@ -224,7 +225,7 @@ def main():
 		#output separated audios
 		if not os.path.isdir(opt.output_dir_root):
 			os.mkdir(opt.output_dir_root)
-		librosa.output.write_wav(os.path.join(opt.output_dir_root, 'speaker' + str(speaker_index+1) + '.wav'), avged_sep_audio, opt.audio_sampling_rate)
+		sf.write(os.path.join(opt.output_dir_root, 'speaker' + str(speaker_index+1) + '.wav'), avged_sep_audio, opt.audio_sampling_rate)
 
 if __name__ == '__main__':
     main()

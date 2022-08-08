@@ -17,7 +17,10 @@ import torch
 import numpy as np
 import mmcv, cv2
 from PIL import Image, ImageDraw
+from tensorflow.keras import models
+import tensorflow as tf
 
+model = models.load_model('/content/drive/MyDrive/Colab Notebooks/gp/models/vgg16_48_3.h5')
 def face2head(boxes, scale=1.5):
     new_boxes = []
     for box in boxes:
@@ -77,7 +80,7 @@ def main():
     frames = [Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)) for frame in video]
     print('Number of frames in video: ', len(frames))
     fa = face_alignment.FaceAlignment(face_alignment.LandmarksType._2D, flip_input=False)
-
+    predictions = []
     for i, frame in enumerate(frames):
         print('\rTracking frame: {}'.format(i + 1), end='')
         
@@ -95,6 +98,16 @@ def main():
         
         for j,box in enumerate(boxes):
             face = frame.crop((box[0], box[1], box[2], box[3])).resize((224,224))
+
+            #myFaces.append(cv2.resize(np.array(face), (48,48)))
+            face48 = cv2.resize(np.array(face).astype(np.float64), (48,48))
+            inputface48 = face48.reshape((1,) + face48.shape)
+            #print(inputface48.shape)            
+            #print(model.predict(inputface48))
+            pred = np.argmax(model.predict(inputface48))
+            print(pred)
+            predictions.append(pred)
+        
             preds = fa.get_landmarks(np.array(face))
             if i == 0:
                 faces_dic[j].append(face)
@@ -110,16 +123,22 @@ def main():
                 faces_dic[box_index].append(face)
                 landmarks_dic[box_index].append(preds)
                 boxes_dic[box_index].append(box)
-    
+    print(len(predictions),'*$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$')
     for s in range(args.number_of_speakers):
         frames_tracked = []
+        i=0
         for i, frame in enumerate(frames):
             # Draw faces
             frame_draw = frame.copy()
             draw = ImageDraw.Draw(frame_draw)
-            draw.rectangle(boxes_dic[s][i], outline=(255, 0, 0), width=6) 
+            draw.rectangle(boxes_dic[s][i], outline=(255, 0, 0), width=6)
+            draw.text((50,50), str(predictions[i+s*len(frames)]), outline=(255, 45, 54), width=10) 
+            #print('boces type',type(boxes_dic[s][i][0]))
+            #print(boxes_dic[s][i][0],'&&&&&&&&&&&7&&&&&&&&&&&')
+            #break
             # Add to frame list
             frames_tracked.append(frame_draw)
+        print('*******',i,'*****************************************')
         dim = frames_tracked[0].size
         fourcc = cv2.VideoWriter_fourcc(*'FMP4')    
         video_tracked = cv2.VideoWriter(os.path.join(args.output_path, 'video_tracked' + str(s+1) + '.mp4'), fourcc, 25.0, dim)
@@ -146,6 +165,7 @@ def main():
     for i in range(args.number_of_speakers):
         csvfile.write('speaker' + str(i+1)+ ',0\n')
     csvfile.close()
+    #return myFaces
 
 
 if __name__ == '__main__':
