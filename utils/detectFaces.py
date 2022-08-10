@@ -16,7 +16,7 @@ from facenet_pytorch import MTCNN
 import torch
 import numpy as np
 import mmcv, cv2
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw , ImageFont
 from tensorflow.keras import models
 import tensorflow as tf
 
@@ -51,6 +51,18 @@ def bb_intersection_over_union(boxA, boxB):
     iou = interArea / float(boxAArea + boxBArea - interArea)
     # return the intersection over union value
     return iou
+def update_predictions(lst,number_of_frames):
+    for i in range(0,len(lst), number_of_frames):
+        sub_list = lst[i:(i+number_of_frames)]
+        mod = max(set(sub_list), key = sub_list.count)
+        #print(sub_list)
+        #print(mod)
+        sub_list = [mod]*len(sub_list)
+        #print(sub_list)
+        lst[i:i+number_of_frames] = sub_list
+        #print(lst[i:i+3])
+    #print(lst)
+    return lst
 
 def main():
     parser = argparse.ArgumentParser()
@@ -81,6 +93,7 @@ def main():
     print('Number of frames in video: ', len(frames))
     fa = face_alignment.FaceAlignment(face_alignment.LandmarksType._2D, flip_input=False)
     predictions = []
+    predictions_dict = { 0: 'angry', 1:'disgust',  2:'fear', 3: 'happy', 4:'neutral', 5: 'sad', 6: 'surprise'}
     for i, frame in enumerate(frames):
         print('\rTracking frame: {}'.format(i + 1), end='')
         
@@ -105,8 +118,8 @@ def main():
             #print(inputface48.shape)            
             #print(model.predict(inputface48))
             pred = np.argmax(model.predict(inputface48))
-            print(pred)
-            predictions.append(pred)
+            print(predictions_dict[pred])
+            predictions.append(predictions_dict[pred])
         
             preds = fa.get_landmarks(np.array(face))
             if i == 0:
@@ -123,6 +136,7 @@ def main():
                 faces_dic[box_index].append(face)
                 landmarks_dic[box_index].append(preds)
                 boxes_dic[box_index].append(box)
+    update_predictions(predictions,number_of_frames=25)
     print(len(predictions),'*$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$')
     for s in range(args.number_of_speakers):
         frames_tracked = []
@@ -132,7 +146,8 @@ def main():
             frame_draw = frame.copy()
             draw = ImageDraw.Draw(frame_draw)
             draw.rectangle(boxes_dic[s][i], outline=(255, 0, 0), width=6)
-            draw.text((50,50), str(predictions[i+s*len(frames)]), outline=(255, 45, 54), width=10) 
+            fnt = ImageFont.truetype("/content/drive/MyDrive/Colab Notebooks/gp/arial.ttf", 40)
+            draw.text((50,50), str(predictions[i+s*len(frames)]), outline=(255, 45, 54), width=10,font = fnt) 
             #print('boces type',type(boxes_dic[s][i][0]))
             #print(boxes_dic[s][i][0],'&&&&&&&&&&&7&&&&&&&&&&&')
             #break
